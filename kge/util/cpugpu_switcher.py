@@ -106,7 +106,7 @@ class CPUOptimizerSwitcher(SwitcherBase):
         """
         optimizer_index = None
         for i, item in enumerate(self.model.named_parameters()):
-            if item[0] == f"{self.variable_name}.weight":
+            if (item[0] == f"{self.variable_name}.weight") or (item[0] == f"_base_model.{self.variable_name}.weight"):
                 optimizer_index = i
         if optimizer_index is None:
             print("Error: No variable with that name is in Model. Please initialize again with correct name")
