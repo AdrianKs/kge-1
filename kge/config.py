@@ -4,6 +4,7 @@ import datetime
 import os
 import time
 import uuid
+import sys
 from enum import Enum
 
 import yaml
@@ -413,6 +414,19 @@ class Config:
         else:
             return None
 
+    @staticmethod
+    def get_best_or_last_checkpoint(path: str) -> str:
+        """Returns best (if present) or last checkpoint path for a given folder path."""
+        config = Config(folder=path, load_default=False)
+        checkpoint_file = config.checkpoint_file("best")
+        if os.path.isfile(checkpoint_file):
+            return checkpoint_file
+        cpt_epoch = config.last_checkpoint()
+        if cpt_epoch:
+            return config.checkpoint_file(cpt_epoch)
+        else:
+            raise Exception("Could not find checkpoint in {}".format(path))
+
     # -- CONVENIENCE METHODS --------------------------------------------------
 
     def _check(self, key: str, value, allowed_values) -> Any:
@@ -536,7 +550,10 @@ def _process_deprecated_options(options: Dict[str, Any]):
     def rename_key(old_key, new_key):
         if old_key in options:
             print(
-                "Warning: key {} is deprecated; use {} instead".format(old_key, new_key)
+                "Warning: key {} is deprecated; use {} instead".format(
+                    old_key, new_key
+                ),
+                file=sys.stderr,
             )
             if new_key in options:
                 raise ValueError(
@@ -554,7 +571,8 @@ def _process_deprecated_options(options: Dict[str, Any]):
             print(
                 "Warning: {}={} is deprecated; use {} instead".format(
                     key, old_value, new_value
-                )
+                ),
+                file=sys.stderr,
             )
             options[key] = new_value
             return True
@@ -584,11 +602,11 @@ def _process_deprecated_options(options: Dict[str, Any]):
     # 30.10.2019
     rename_value("train.loss", "ce", "kl")
     rename_keys_re(r"\.regularize_args\.weight$", ".regularize_weight")
-    for p in [1,2,3]:
+    for p in [1, 2, 3]:
         for key in rename_value_re(r".*\.regularize$", f"l{p}", "lp"):
             new_key = re.sub(r"\.regularize$", ".regularize_args.p", key)
             options[new_key] = p
-            print(f"Set {new_key}={p}.")
+            print(f"Set {new_key}={p}.", file=sys.stderr)
 
     # 21.10.2019
     rename_key("negative_sampling.score_func_type", "negative_sampling.implementation")

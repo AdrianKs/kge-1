@@ -118,7 +118,10 @@ class TrainingJob(Job):
         while True:
             # checking for model improvement according to metric_name
             # and do early stopping and keep the best checkpoint
-            if len(self.valid_trace) > 0:
+            if (
+                len(self.valid_trace) > 0
+                and self.valid_trace[-1]["epoch"] == self.epoch
+            ):
                 best_index = max(
                     range(len(self.valid_trace)),
                     key=lambda index: self.valid_trace[index][metric_name],
@@ -377,7 +380,7 @@ class TrainingJob(Job):
                     "avg_loss": batch_result.avg_loss,
                     "penalties": [p.item() for p in penalties_torch],
                     "penalty": penalty,
-                    "cost": cost_value.item(),
+                    "cost": cost_value,
                     "prepare_time": batch_result.prepare_time,
                     "forward_time": batch_forward_time,
                     "backward_time": batch_backward_time,
