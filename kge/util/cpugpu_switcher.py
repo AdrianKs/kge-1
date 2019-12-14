@@ -71,15 +71,11 @@ class CPUEmbeddingSwitcher(SwitcherBase):
             self.cpu_tensor.pin_memory()
 
     def to_gpu(self):
-        target = self.gpu_embedding_layer.weight.data[self.mapped_indexes, :]
-        target.copy_(self.cpu_tensor[self.indexes, :])
-        #self.gpu_embedding_layer.weight.data[self.mapped_indexes, :] = self.cpu_tensor[self.indexes, :].to(self.device)
+        self.gpu_embedding_layer.weight.data[self.mapped_indexes, :] = self.cpu_tensor[self.indexes, :].to(self.device)
 
     def to_cpu(self):
-        target = self.cpu_tensor[self.indexes, :]
-        target.copy_(self.gpu_embedding_layer.weight.data[self.mapped_indexes, :].detach())
-        # self.cpu_tensor[self.indexes, :] = self.gpu_embedding_layer.weight.data[self.mapped_indexes, :]\
-        #     .detach().to("cpu").pin_memory()
+        self.cpu_tensor[self.indexes, :] = self.gpu_embedding_layer.weight.data[self.mapped_indexes, :]\
+            .detach().to("cpu").pin_memory()
 
     def load(self, savepoint):
         self.cpu_tensor = savepoint
@@ -154,18 +150,13 @@ class CPUOptimizerSwitcher(SwitcherBase):
 
     def to_gpu(self):
         for idx, optimizer_var in enumerate(self.optimizer_variable_list):
-            target = self.optimizer.state_dict()["state"][self.optimizer_key][optimizer_var][self.mapped_indexes, :]
-            target.copy_( self.cpu_var[idx][self.indexes, :])
-            # self.optimizer.state_dict()["state"][self.optimizer_key][optimizer_var][self.mapped_indexes, :] = \
-            #     self.cpu_var[idx][self.indexes, :].to(self.device)
+            self.optimizer.state_dict()["state"][self.optimizer_key][optimizer_var][self.mapped_indexes, :] = \
+                self.cpu_var[idx][self.indexes, :].to(self.device)
 
     def to_cpu(self):
         for idx, optimizer_var in enumerate(self.optimizer_variable_list):
-            target = self.cpu_var[idx][self.indexes, :]
-            target.copy_(self.optimizer.state_dict()["state"][self.optimizer_key][
-                                                     optimizer_var][self.mapped_indexes, :].detach())
-            #self.cpu_var[idx][self.indexes, :] = self.optimizer.state_dict()["state"][self.optimizer_key][
-            #                                         optimizer_var][self.mapped_indexes, :].detach().to("cpu", non_blocking=True).pin_memory()
+            self.cpu_var[idx][self.indexes, :] = self.optimizer.state_dict()["state"][self.optimizer_key][
+                                                     optimizer_var][self.mapped_indexes, :].detach().to("cpu").pin_memory()
 
     def load(self, savepoint):
         self.cpu_var = savepoint
