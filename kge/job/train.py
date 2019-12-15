@@ -990,6 +990,7 @@ class TrainingJobCPUGPU(TrainingJobNegativeSampling):
         o_mapped = self.embedding_cpu_switcher.map_indexes(triples[:, O], self.device)
         triples_mapped = torch.stack((s_mapped, triples[:, P],
                                       o_mapped), dim=1)
+        batch["triples"] = triples_mapped
         # now map negatives
         s_neg_mapped = self.embedding_cpu_switcher.map_indexes(negative_samples[S].view(num_negative_samples_s),
                                                                self.device).view(batch_size,
