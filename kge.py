@@ -7,12 +7,14 @@ import yaml
 from kge import Dataset
 from kge import Config
 from kge.job import Job
-from kge.util.misc import get_git_revision_short_hash, kge_base_dir, is_number
+from kge.misc import get_git_revision_short_hash, kge_base_dir, is_number
 from kge.util.dump import add_dump_parsers, dump
 
 
 def argparse_bool_type(v):
     "Type for argparse that correctly treats Boolean values"
+    if isinstance(v, bool):
+        return v
     if v.lower() in ("yes", "true", "t", "y", "1"):
         return True
     elif v.lower() in ("no", "false", "f", "n", "0"):
