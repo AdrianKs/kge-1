@@ -286,16 +286,16 @@ class KgeModel(KgeBase):
     @staticmethod
     def _calc_embedding_layer_size(config, dataset):
         if config.get("train.type") == "cpu_gpu":
-            num_negatives_s = config.get("negative_sampling.num_negatives_s")
-            if config.get("negative_sampling.num_negatives_o") == -1:
-                num_negatives_o = config.get("negative_sampling.num_negatives_s")
+            num_samples_s = config.get("negative_sampling.num_samples_s")
+            if config.get("negative_sampling.num_samples_o") == -1:
+                num_samples_o = config.get("negative_sampling.num_samples_s")
             else:
-                num_negatives_o = config.get("negative_sampling.num_negatives_o")
+                num_samples_o = config.get("negative_sampling.num_samples_o")
             config_chunk_size = int(config.get("eval.chunk_size"))
             chunk_size = dataset.num_entities if config_chunk_size == -1 else config_chunk_size
 
             embedding_layer_size = int(config.get("train.batch_size")) * 2 + int(
-                num_negatives_s * num_negatives_o * int(config.get("train.batch_size"))) + chunk_size
+                num_samples_s * num_samples_o * int(config.get("train.batch_size"))) + chunk_size
             embedding_layer_size = min(embedding_layer_size, dataset.num_entities)
         else:
             embedding_layer_size = dataset.num_entities

@@ -968,7 +968,6 @@ class TrainingJobCPUGPU(TrainingJobNegativeSampling):
         self.optimizer_cpu_switcher.to_cpu()
 
     def _process_batch(self, batch_index, batch) -> TrainingJob._ProcessBatchResult:
-        # prepare
         prepare_time = -time.time()
         triples = batch["triples"].to(self.device)
         negative_samples = [ns.to(self.device) for ns in batch["negative_samples"]]
@@ -1004,19 +1003,17 @@ class TrainingJobCPUGPU(TrainingJobNegativeSampling):
         loss_value = 0.0
         forward_time = 0.0
         backward_time = 0.0
-        num_negatives = None
+        num_samples = 0
         labels = None
         for slot in [S, P, O]:
-            if self._sampler.num_negatives[slot] <= 0:
+            if self._sampler.num_samples[slot] <= 0:
                 continue
 
             # construct gold labels: first column corresponds to positives, rest to negatives
-            if self._sampler.num_negatives[slot] != num_negatives:
+            if self._sampler.num_samples[slot] != num_samples:
                 prepare_time -= time.time()
-                num_negatives = self._sampler.num_negatives[slot]
-                labels = torch.zeros(
-                    (batch_size, 1 + num_negatives), device=self.device
-                )
+                num_samples = self._sampler.num_samples[slot]
+                labels = torch.zeros((batch_size, 1 + num_samples), device=self.device)
                 labels[:, 0] = 1
                 prepare_time += time.time()
 
@@ -1025,7 +1022,7 @@ class TrainingJobCPUGPU(TrainingJobNegativeSampling):
             if self._implementation == "spo":
                 # construct triples
                 prepare_time -= time.time()
-                triples_to_score = triples_mapped.repeat(1, 1 + num_negatives).view(-1, 3)
+                triples_to_score = triples_mapped.repeat(1, 1 + num_samples).view(-1, 3)
                 triples_to_score[:, slot] = torch.cat(
                     (
                         triples_mapped[:, [slot]],  # positives
@@ -1060,7 +1057,7 @@ class TrainingJobCPUGPU(TrainingJobNegativeSampling):
                 row_indexes = (
                     torch.arange(batch_size, device=self.device)
                     .unsqueeze(1)
-                    .repeat(1, 1 + num_negatives)
+                    .repeat(1, 1 + num_samples)
                     .view(-1)
                 )  # 000 111 222; each 1+num_negative times (here: 3)
                 column_indexes = torch.cat(
@@ -1085,7 +1082,7 @@ class TrainingJobCPUGPU(TrainingJobNegativeSampling):
             # compute loss
             forward_time -= time.time()
             loss_value_torch = (
-                self.loss(scores, labels, num_negatives=num_negatives) / batch_size
+                self.loss(scores, labels, num_negatives=num_samples) / batch_size
             )
             loss_value += loss_value_torch.item()
             forward_time += time.time()
