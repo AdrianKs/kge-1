@@ -295,7 +295,7 @@ class KgeModel(KgeBase):
             chunk_size = dataset.num_entities if config_chunk_size == -1 else config_chunk_size
 
             embedding_layer_size = int(config.get("train.batch_size")) * 2 + int(
-                num_samples_s * num_samples_o * int(config.get("train.batch_size"))) + chunk_size
+                (num_samples_s + num_samples_o) * int(config.get("train.batch_size"))) + chunk_size
             embedding_layer_size = min(embedding_layer_size, dataset.num_entities)
         else:
             embedding_layer_size = dataset.num_entities
