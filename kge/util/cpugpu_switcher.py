@@ -130,6 +130,27 @@ class CPUOptimizerSwitcher(SwitcherBase):
                 if self.optimizer.__str__().split(" ", 1)[0] == "Adagrad":
                     optimizer_variable_list = ["sum"]
                     return optimizer_variable_list
+                elif self.optimizer.__str__().split(' ', 1)[0] == 'SparseAdam':
+                    # State initialization
+                    if len(state) == 0:
+                        state['step'] = 0
+                        state['exp_avg'] = torch.zeros_like(p.data)
+                        state['exp_avg_sq'] = torch.zeros_like(p.data)
+                    optimizer_variable_list = ['exp_avg', 'exp_avg_sq']
+                    return optimizer_variable_list
+                elif self.optimizer.__str__().split(' ', 1)[0] == 'Adam':
+                    amsgrad = group['amsgrad']
+                    if len(state) == 0:
+                        state['step'] = 0
+                        state['exp_avg'] = torch.zeros_like(p.data)
+                        state['exp_avg_sq'] = torch.zeros_like(p.data)
+                        if amsgrad:
+                            state['max_exp_avg_sq'] = torch.zeros_like(p.data)
+                    optimizer_variable_list = ['exp_avg', 'exp_avg_sq']
+                    return optimizer_variable_list
+                elif self.optimizer.__str__().split(' ', 1)[0] == 'SGD':
+                    optimizer_variable_list = []
+                    return optimizer_variable_list
                 else:
                     print("this optimizer is currently not supported")
                     exit(1)
