@@ -43,9 +43,11 @@ class SwitcherBase:
         :return: None
         """
         self.indexes = indexes.to("cpu").long()
-        self.mapped_indexes = torch.arange(len(indexes))
-        self.mapper = dict(zip(self.indexes.numpy(), self.mapped_indexes.cpu().numpy()))
-        self.mapped_indexes = self.mapped_indexes.to(device).long()
+        self.mapped_indexes = torch.arange(len(indexes)).long()
+        self.mapper = torch.LongTensor(self.num_embeddings).fill_(-1)
+        self.mapper[indexes] = self.mapped_indexes
+        self.mapper = self.mapper.to(device)
+        self.mapped_indexes = self.mapped_indexes.to(device)
 
     def map_indexes(self, values, device="cuda"):
         """
@@ -54,9 +56,9 @@ class SwitcherBase:
         :param device: cuda device
         :return: one dimensional tensor containing the mapped indexes
         """
-        mapped = np.vectorize(self.mapper.get)(values.cpu().numpy())
-        #mapped = values.cpu().apply_(lambda x: self.mapper[x])
-        return torch.LongTensor(mapped).to(device)
+        mapped = self.mapper[values.long()]
+        return mapped
+        #return torch.LongTensor(mapped).to(device)
 
 
 class CPUEmbeddingSwitcher(SwitcherBase):
