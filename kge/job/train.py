@@ -931,9 +931,9 @@ class TrainingJobCPUGPU(TrainingJobNegativeSampling):
         from kge.job import EvaluationJob
         super().__init__(config, dataset, parent_job)
         dim = self.model._entity_embedder.dim
-        self.embedding_cpu_switcher = CPUEmbeddingSwitcher(self.model._entity_embedder.embeddings, dataset.num_entities,
+        self.embedding_cpu_switcher = CPUEmbeddingSwitcher(self.model._entity_embedder.embeddings, dataset.num_entities(),
                                                            dim, device=config.get("job.device"))
-        self.optimizer_cpu_switcher = CPUOptimizerSwitcher(self.optimizer, dataset.num_entities, dim, self.model,
+        self.optimizer_cpu_switcher = CPUOptimizerSwitcher(self.optimizer, dataset.num_entities(), dim, self.model,
                                                            device=config.get("job.device"))
         self._init_tensor(self.embedding_cpu_switcher.cpu_tensor)
         valid_conf = config.clone()

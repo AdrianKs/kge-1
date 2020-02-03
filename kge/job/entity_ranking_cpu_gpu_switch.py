@@ -24,7 +24,7 @@ class EntityRankingJobCpuGpuSwitcher(EntityRankingJob):
         self.config.log(
             "Evaluating on " + self.eval_data + " data (epoch {})...".format(self.epoch)
         )
-        num_entities = self.dataset.num_entities
+        num_entities = self.dataset.num_entities()
 
         # we also filter with test data during validation if requested
         filtered_valid_with_test = (
