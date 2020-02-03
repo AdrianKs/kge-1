@@ -15,5 +15,10 @@ train:
 lookup_embedder.dim: 100
 
 negative_sampling:
-  num_negatives_s: 30
-  num_negatives_o: -1
+  num_samples.s: 30
+  num_samples.o: -1
+  num_samples.p: 30
+  filtering:
+    s: True
+    o: True
+    p: True

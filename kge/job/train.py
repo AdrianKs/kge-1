@@ -232,6 +232,7 @@ class TrainingJob(Job):
         self.config.log("Saving checkpoint to {}...".format(filename))
         torch.save(
             {
+                "type": "train",
                 "config": self.config,
                 "epoch": self.epoch,
                 "valid_trace": self.valid_trace,
@@ -504,22 +505,22 @@ class TrainingJobKvsAll(TrainingJob):
                     "should be at least 0.".format(self.label_smoothing)
                 )
         elif self.label_smoothing > 0 and self.label_smoothing <= (
-            1.0 / dataset.num_entities
+            1.0 / dataset.num_entities()
         ):
             if config.get("train.auto_correct"):
                 # just to be sure it's used correctly
                 config.log(
-                    "Setting label_smoothing to 1/dataset.num_entities = {}, "
+                    "Setting label_smoothing to 1/num_entities = {}, "
                     "was set to {}.".format(
-                        1.0 / dataset.num_entities, self.label_smoothing
+                        1.0 / dataset.num_entities(), self.label_smoothing
                     )
                 )
-                self.label_smoothing = 1.0 / dataset.num_entities
+                self.label_smoothing = 1.0 / dataset.num_entities()
             else:
                 raise Exception(
                     "Label_smoothing was set to {}, "
                     "should be at least {}.".format(
-                        self.label_smoothing, 1.0 / dataset.num_entities
+                        self.label_smoothing, 1.0 / dataset.num_entities()
                     )
                 )
 
@@ -532,8 +533,8 @@ class TrainingJobKvsAll(TrainingJob):
 
     def _prepare(self):
         # create sp and po label_coords (if not done before)
-        train_sp = self.dataset.index_KvsAll("train", "sp")
-        train_po = self.dataset.index_KvsAll("train", "po")
+        train_sp = self.dataset.index("train_sp_to_o")
+        train_po = self.dataset.index("train_po_to_s")
 
         # convert indexes to pytoch tensors: a nx2 keys tensor (rows = keys),
         # an offset vector (row = starting offset in values for corresponding
@@ -547,12 +548,12 @@ class TrainingJobKvsAll(TrainingJob):
             self.train_sp_keys,
             self.train_sp_values,
             self.train_sp_offsets,
-        ) = Dataset.prepare_index(train_sp)
+        ) = kge.indexing.prepare_index(train_sp)
         (
             self.train_po_keys,
             self.train_po_values,
             self.train_po_offsets,
-        ) = Dataset.prepare_index(train_po)
+        ) = kge.indexing.prepare_index(train_po)
 
         # create dataloader
         self.loader = torch.utils.data.DataLoader(
@@ -648,7 +649,7 @@ class TrainingJobKvsAll(TrainingJob):
         sp_indexes = is_sp.nonzero().to(self.device).view(-1)
         po_indexes = (is_sp == 0).nonzero().to(self.device).view(-1)
         labels = kge.job.util.coord_to_sparse_tensor(
-            batch_size, self.dataset.num_entities, label_coords, self.device
+            batch_size, self.dataset.num_entities(), label_coords, self.device
         ).to_dense()
         if self.label_smoothing > 0.0:
             # as in ConvE: https://github.com/TimDettmers/ConvE
@@ -717,15 +718,15 @@ class TrainingJobNegativeSampling(TrainingJob):
         if self.is_prepared:
             return
 
+        self.num_examples = self.dataset.train().size(0)
         self.loader = torch.utils.data.DataLoader(
-            range(self.dataset.train.size(0)),
+            range(self.num_examples),
             collate_fn=self._get_collate_fun(),
             shuffle=True,
             batch_size=self.batch_size,
             num_workers=self.config.get("train.num_workers"),
             pin_memory=self.config.get("train.pin_memory"),
         )
-        self.num_examples = self.dataset.train.size(0)
 
         self.is_prepared = True
 
@@ -739,7 +740,7 @@ class TrainingJobNegativeSampling(TrainingJob):
               in order S,P,O)
             """
 
-            triples = self.dataset.train[batch, :].long()
+            triples = self.dataset.train()[batch, :].long()
             # labels = torch.zeros((len(batch), self._sampler.num_negatives_total + 1))
             # labels[:, 0] = 1
             # labels = labels.view(-1)
@@ -876,15 +877,15 @@ class TrainingJob1vsAll(TrainingJob):
         if self.is_prepared:
             return
 
+        self.num_examples = self.dataset.train().size(0)
         self.loader = torch.utils.data.DataLoader(
-            range(self.dataset.train.size(0)),
-            collate_fn=lambda batch: {"triples": self.dataset.train[batch, :].long()},
+            range(self.num_examples),
+            collate_fn=lambda batch: {"triples": self.dataset.train()[batch, :].long()},
             shuffle=True,
             batch_size=self.batch_size,
             num_workers=self.config.get("train.num_workers"),
             pin_memory=self.config.get("train.pin_memory"),
         )
-        self.num_examples = self.dataset.train.size(0)
 
         self.is_prepared = True
 
@@ -900,7 +901,7 @@ class TrainingJob1vsAll(TrainingJob):
         scores_sp = self.model.score_sp(triples[:, 0], triples[:, 1])
         loss_value_sp = self.loss(scores_sp, triples[:, 2]) / batch_size
         loss_value = loss_value_sp.item()
-        forward_time = +time.time()
+        forward_time += time.time()
         backward_time = -time.time()
         loss_value_sp.backward()
         backward_time += time.time()
